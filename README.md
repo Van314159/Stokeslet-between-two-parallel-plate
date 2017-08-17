@@ -4,5 +4,6 @@ A project for my summer internship in CSRC in 2017. It is used for studying the 
 
 # Reference
 
-1. [Stokes flow fro a stokeslet betwwen two parallel plates. Liron, et.al., 1976](Reference/Stokes flow for a stokeslet between two parallel flat platesliron1976.pdf)
+1. [Stokes flow for a stokeslet betwwen two parallel plates. Liron, et.al., 1976](Reference/Stokes flow for a stokeslet between two parallel flat platesliron1976.pdf)
 
+2. [Stokes flow for a stokeslet betwwen two parallel plates. Liron, et.al., 1976](https://link.springer.com/article/10.1007/BF01535565)

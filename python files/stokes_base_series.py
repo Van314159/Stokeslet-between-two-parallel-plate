@@ -1,14 +1,14 @@
-# In fact, hankel funciton can be imported by scipy.
-# That maybe faster.
-# z(m) is the m-th root of sinh(z)**2 = z**2 
-# pre-calculate pi first.
-import mpmath as mp
 import numpy as np
-from mpmath import sinh, cosh, sqrt
 import time as time
-import stokes_main as skm
-import stokes_ as sk
+import mpmath as mp
+from mpmath import sinh, cosh, sqrt
 
+'''In fact, hankel funciton can be imported by scipy.
+That maybe faster.
+z(m) is the m-th root of sinh(z)**2 = z**2 
+pre-calculate pi first.
+
+'''
 mp.dps = 30
 mp.pretty = True
 

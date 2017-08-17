@@ -295,3 +295,63 @@ class tank():
         yd = self.yderi(*point_locs, dr)
         zd = self.zderi(*point_locs, dr)
         return xd + yd + zd   
+
+    def get_ux_series(self, point_loc, n_f=50, n_i=1):
+        '''Return the series solution of Green funcition caused by Fx.
+        
+        Arguments:
+        point_loc -> location of field point
+        n_f: final number of your series.
+        n_i: initial number of your series. 
+        
+        '''
+        x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
+        #r = sk.np.sqrt(x**2 + y**2)
+        para1 = [x, y, z, self.height, Height, n_i, n_f]
+        self.u_tensor[0][0] = sks.u11(*para1)
+        self.u_tensor[0][1] = sks.u12(*para1)
+        self.u_tensor[0][2] = sks.u13(*para1)
+        return self.u_tensor[0, :]
+    
+    def get_uy_series(self, point_loc, n_f=50, n_i=1):
+        '''Return the series solution of Green funcition caused by Fx.
+        
+        Arguments:
+        point_loc -> location of field point
+        n_f: final number of your series.
+        n_i: initial number of your series. 
+        
+        '''
+        x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
+        #r = sk.np.sqrt(x**2 + y**2)
+        '''u21(x, y) = u12(y, x)'''
+        para2 = [y, x, z, self.height, Height, n_i, n_f]
+        self.u_tensor[1][0] = sks.u12(*para2)
+        self.u_tensor[1][1] = sks.u11(*para2)
+        self.u_tensor[1][2] = sks.u13(*para2)
+        return self.u_tensor[1, :]
+        
+    def get_uz_series(self, point_loc, n_f=50, n_i=1):
+        '''Return the series solution of Green funcition caused by Fx.
+        
+        Arguments:
+        point_loc -> location of field point
+        n_f: final number of your series.
+        n_i: initial number of your series. 
+        
+        '''
+        x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
+        #r = sk.np.sqrt(x**2 + y**2)
+        '''u32(x, y) = u31(y, x)'''
+        para1 = [y, x, z, self.height, Height, n_i, n_f]
+        para2 = 
+        self.u_tensor[2][0] = sks.u31(*para1)
+        self.u_tensor[2][1] = sks.u31(*para2)
+        self.u_tensor[2][2] = sks.u33(*para1)
+        return self.u_tensor[2, :]
+    
+    def get_u_series(self, point_loc, n_f=50, n_i=1):
+        self.get_ux_series(point_loc, n_f, n_i)
+        self.get_uy_series(point_loc, n_f, n_i)
+        self.get_uz_series(point_loc, n_f, n_i)
+        return self.u_tensor.copy()

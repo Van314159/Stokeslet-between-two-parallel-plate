@@ -1,9 +1,14 @@
-import stokes_ as sk
+import scipy.special as sps
+import stokes_base_integral as sk
+import stokes_base_series as sks
 
 '''
 The commom package is already loaded in sk. 
 np -- numpy; mp -- mpmath; plt -- matplotlib; 
 sb -- seaborn; pd -- pandas
+
+scipy.special is loaded in sks.
+scipy.special -- sps
 '''
 
 class tank():
@@ -355,3 +360,142 @@ class tank():
         self.get_uy_series(point_loc, n_f, n_i)
         self.get_uz_series(point_loc, n_f, n_i)
         return self.u_tensor.copy()
+
+    def get_uxfunc_series(self, point_loc, n_f=50, n_s=1):
+        '''Return the series solution of Green funcition caused by Fx.
+        
+        Arguments:
+        point_loc -> location of field point
+        n_f: final number of your series.
+        n_s: start number of your series. 
+        
+        '''
+        x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
+        #r = sk.np.sqrt(x**2 + y**2)
+        para1 = [x, y, z, self.height, self.Height, n_f, n_s]
+        self.u_tensor[0][0] = sks.u11(*para1)
+        self.u_tensor[0][1] = sks.u12(*para1)
+        self.u_tensor[0][2] = sks.u13(*para1)
+        return self.u_tensor[0, :]
+    
+    def get_uyfunc_series(self, point_loc, n_f=50, n_s=1):
+        '''Return the series solution of Green funcition caused by Fx.
+        
+        Arguments:
+        point_loc -> location of field point
+        n_f: final number of your series.
+        n_s: initial number of your series. 
+        
+        '''
+        x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
+        #r = sk.np.sqrt(x**2 + y**2)
+        '''u21(x, y) = u12(y, x)'''
+        para2 = [y, x, z, self.height, self.Height, n_f, n_s]
+        self.u_tensor[1][0] = sks.u12(*para2)
+        self.u_tensor[1][1] = sks.u11(*para2)
+        self.u_tensor[1][2] = sks.u13(*para2)
+        return self.u_tensor[1, :]
+        
+    def get_uzfunc_series(self, point_loc, n_f=50, n_s=1):
+        '''Return the series solution of Green funcition caused by Fx.
+        
+        Arguments:
+        point_loc -> location of field point
+        n_f: final number of your series.
+        n_s: initial number of your series. 
+        
+        '''
+        x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
+        #r = sk.np.sqrt(x**2 + y**2)
+        '''u32(x, y) = u31(y, x)'''
+        para1 = [x, y, z, self.height, self.Height, n_f, n_s]
+        para2 = [y, x, z, self.height, self.Height, n_f, n_s]
+        self.u_tensor[2][0] = sks.u31(*para1)
+        self.u_tensor[2][1] = sks.u31(*para2)
+        self.u_tensor[2][2] = sks.u33(*para1)
+        return self.u_tensor[2, :]
+    
+    def get_ufunc_series(self, point_loc, n_f=50, n_s=1):
+        '''Return the series solution of  full Green funcition.
+	
+	Arguments:
+        point_locs -> location of field points
+        n_f: final number of your series.
+        n_s: initial number of your series. 
+	'''
+        x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
+        x3 = z
+        pi = sks.np.pi
+        r = sk.np.sqrt(x**2 + y**2)
+        zm = sks.zm
+        sinsin = sks.np.array([sks.sinsin(x3, h, H, n) for n in range(n_s, n_f+1)])
+        shsh = sks.np.array([sks.shsh(x3, h, H, n) for n in range(n_s, n_f+1)])
+        chsh = sks.np.array([sks.chsh(x3, h, H, n) for n in range(n_s, n_f+1)])
+        shch = sks.np.array([sks.shch(x3, h, H, n) for n in range(n_s, n_f+1)])
+        shMinch = sks.np.array([sks.shMinch(x3, h, H, n) for n in range(n_s, n_f+1)])
+        chMinsh = sks.np.array([sks.chMinsh(x3, h, H, n) for n in range(n_s, n_f+1)])
+        zm_Add = sks.np.array([sks.zm_Add(n) for n in range(n_s, n_f+1)])
+        inverseOfzm_Min = sks.np.array([sks.inverseOfzm_Min(n) for n in range(n_s, n_f+1)])
+        hankel0 = sks.np.array([sks.mp.hankel1(0, r*zm(n)/H) for n in range(n_s, n_f+1)])
+        hankel1 = sks.np.array([sks.mp.hankel1(1, r*zm(n)/H) for n in range(n_s, n_f+1)])
+        besselk0 = sks.np.array([sps.k0(r*n*pi/H) for n in range(n_s, n_f+1)])
+        besselk1= sks.np.array([1 / (n*pi) * sps.k1(r*n*pi/H) for n in range(n_s, n_f+1)])
+    
+        uabH0 = sks.np.array([sks.mp.im(pi * zm(n+1)/H * hankel0[n] * (1/zm(n+1)*shsh[n] + chsh[n] + shch[n]
+                    - inverseOfzm_Min[n]*zm(n+1)*((x3+h)/H*shsh[n]
+                    + x3*h/H**2*(sks.mp.cosh((h-x3)*zm(n+1)/H)-chMinsh[n])))) 
+                    for n in range(n_f)])
+        uabH1 = sks.np.array([sks.mp.im(pi * hankel1[n] * 
+                    (1/zm(n+1)*shsh[n] + chsh[n] + shch[n]
+                     - inverseOfzm_Min[n]*zm(n+1)*((x3+h)/H*shsh[n]
+                    + x3*h/H**2*(sks.mp.cosh((h-x3)*zm(n+1)/H)-chMinsh[n]))))
+                    for n in range(n_f)])
+        uabK0 = 4./ H * sinsin * besselk0
+        uabK1 = 4. * sinsin * besselk1
+        ua3H1 = sks.np.array([-pi/H * sks.mp.im(zm(n+1) * hankel1[n] * inverseOfzm_Min[n] 
+                    * (x3*h*zm(n+1)/H**2 *(sks.mp.sinh((x3-h)*zm(n+1)/H) + shMinch[n]) 
+                    + zm(n+1)*(chsh[n] - shch[n])
+                    + shsh[n]*((h-x3)/H*(zm_Add[n]-1) - ((x3+h)/H - 1))))
+                    for n in range(n_f)])
+        u3aH1 = sks.np.array([-pi/H * sks.mp.im(zm(n+1) * hankel1[n] * inverseOfzm_Min[n] 
+                    * (x3*h*zm(n+1)/H**2 *(sks.mp.sinh((x3-h)*zm(n+1)/H) - shMinch[n]) 
+                    + zm(n+1)*(chsh[n] - shch[n])
+                    + shsh[n]*((h-x3)/H*(zm_Add[n]-1) + ((x3+h)/H - 1))))
+                    for n in range(n_f)])
+        u33H0 = sks.np.array([-pi/H * sks.mp.im(zm(n+1) * hankel0[n] * inverseOfzm_Min[n]
+                    * (zm_Add[n]*(chsh[n] + shch[n] - 1/zm(n+1) * shsh[n])
+                    - (h*x3)/(H**2)*zm(n+1)*(chMinsh[n] + sks.mp.cosh((x3 - h)*zm(n+1)/H))
+                    - zm(n+1)*(x3 + h)/H*shsh[n]))
+                    for n in range(n_f)])
+        
+        
+        self.u_tensor[0][0] = ((x**2/r**2 * (uabH0 + uabK0) 
+                                + (y**2-x**2)/r**3 * (uabH1+ uabK1 + r*uabK0)).sum()
+                                - (y**2-x**2)/r**4 * sks.uabSimple(r, x3, h, H))
+        self.u_tensor[0][1] = ((x*y/r**2 * (uabH0 + uabK0)
+                                + (-2*x*y)/r**3 * (uabH1 + uabK1+ r*uabK0)).sum()
+                                + (2*x*y)/r**4 * sks.uabSimple(r, x3, h, H))
+        self.u_tensor[1][0] = self.u_tensor[0][1]
+        self.u_tensor[1][1] = ((y**2/r**2 * (uabH0 + uabK0) 
+                                + (x**2-y**2)/r**3 * (uabH1+ uabK1 + r*uabK0)).sum()
+                                - (x**2-y**2)/r**4 * sks.uabSimple(r, x3, h, H))
+        
+        self.u_tensor[0][2] = x / r * ua3H1.sum()
+        self.u_tensor[1][2] = y / r * ua3H1.sum()
+        
+        self.u_tensor[2][0] = x / r * u3aH1.sum()
+        self.u_tensor[2][1] = y / r * u3aH1.sum()
+        
+        self.u_tensor[2][2] = u33H0.sum()
+        return self.u_tensor.copy()
+    
+    def get_Ufunc_series(self, point_locs, n_f=50, n_s=1):
+	'''Return the series solution of full Green funcition of a list of points.
+	
+	Arguments:
+        point_locs -> location of field points
+        n_f: final number of your series.
+        n_s: initial number of your series. 
+	'''
+        Ufunc = sk.np.array([self.get_ufunc_series(pt, n_f, n_s) for pt in point_locs])
+        return (Ufunc[:, i, j] for i in range(3) for j in range(3))

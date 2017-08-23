@@ -1,49 +1,40 @@
-import scipy.special as sps
 import stokes_base_integral as sk
 import stokes_base_series as sks
-
 '''
+stokes_base_integral: use integral method to get the green function.
+sotkes_base_series: use series method to get the green function.
+
 The commom package is already loaded in sk. 
 np -- numpy; mp -- mpmath; plt -- matplotlib; 
 sb -- seaborn; pd -- pandas
 
 scipy.special is loaded in sks.
 scipy.special -- sps
+
 '''
 
 class tank():
-    ''' 
-        we set the first plate as the plane of z=0.
-        It's used for generating  field value table.
-        
-        (x_R, y_R, z_R)：the field position. Default value = (0, 0, 0)
-        (x_F, y_F, z_F): the position of point force. In fact, we won't use it.
-        Nx, Ny, Nz: the number of points. To be added...
-        xlim, ylim, zlim: ragion of calculation. To be added...
-        height: z_F, the height of force point.
-        Height: the height of the second plate.
-        u_tensor: the green function tensor. 
-        U_tensor: table that contains u_tensor in every point.
-        However, since the x-y plane is infinite large. we set (x_F, y_F) = (0, 0)
-        So users only need to input z_F, or in other words, height.
-    ''' 
+    ''' we set the first plate as the plane of z=0.
+	
+    (x_F, y_F, z_F): the position of point force.
+    height: z_F, the height of force point.
+    Height: the height of the second plate.
+    u_tensor: a 3*3 Green function tensor. 
+	u_ij: u_i caused by F_j. 
+    U_tensor: a list of u_tensor.
+	For test, user can set height only then the force location is (0, 0, height).
     
-    h0 = 1
-    k = 2 * sk.mp.pi
-    
+	''' 
     def __init__(self, Height):
         
         self.Height = Height
-        #self.Nx, self.Ny, self.Nz = 1, 1, 1
-        self.x_R = 0
-        self.y_R = 0
-        self.z_R = 0
         self.x_F = 0
         self.y_F = 0
         self.z_F = 0
         self.height = 0
         self.u_tensor = sk.np.zeros([3, 3]) 
         self.U_tensor = []
+		'''Set local name for the global function.'''
         self.far_integral = sk.far_integral
         self.near_integral = sk.near_integral 
 		
@@ -55,8 +46,8 @@ class tank():
     def set_height(self, height):
         self.height = height
     	
-    def get_ux(self, x, y, z, imax=4):
-        '''Get Green function for ux'''
+    def get_ux_ingegral(self, x, y, z, imax=4):
+        '''Get Green function for ux by integral method in sk'''
         para_1 = [x, y, z, self.height, self.Height, imax]
         para_2 = [y, x, z, self.height, self.Height, imax]
 
@@ -66,8 +57,8 @@ class tank():
         
         return self.u_tensor[0]
     
-    def get_uy(self, x, y, z, imax=4):
-        '''Get Green function for uy'''
+    def get_uy_integral(self, x, y, z, imax=4):
+        '''Get Green function for uy by integral method in sk'''
         para_1 = [x, y, z, self.height, self.Height, imax]
         para_2 = [y, x, z, self.height, self.Height, imax]
 
@@ -77,8 +68,8 @@ class tank():
         
         return self.u_tensor[1]
     
-    def get_uz(self, x, y, z, imax=4):
-        '''Get Green function for uz'''
+    def get_uz_integral(self, x, y, z, imax=4):
+        '''Get Green function for uz by integral method in sk'''
         para_1 = [x, y, z, self.height, self.Height, imax]
         para_2 = [y, x, z, self.height, self.Height, imax]
 
@@ -88,8 +79,8 @@ class tank():
         
         return self.u_tensor[2]
     
-    def get_u(self, x, y, z, imax=4):
-        '''Get Green function for one point.'''
+    def get_u_integral(self, x, y, z, imax=4):
+        '''Get Green function for one point by integral method in sk'''
         # Seperate xy plane for its symmetry.
         # para_0 for u11, u12, u21, u13, u31,u33.
         # para_1 for u22, u32, u32.
@@ -127,7 +118,7 @@ class tank():
         return div_x + div_y + div_z
 
     def get_U(self, x_list, y_list, z_list, imax=4):
-        '''Get the full space Green function.'''
+        '''Get the full space Green function by integral in sk.'''
         if (type(x_list) or type(y_list) or type(z_list)) is not sk.np.ndarray:
             raise TypeError("x, y, z should be array!")
         
@@ -137,71 +128,17 @@ class tank():
                           for zz in z_list])
         return Uxy
 	
-    '''Added in 8.7, 2017. Input array, return full Green funciton.'''
-    def get_ufunc(self, point_loc): 
-        '''      
-        First We get the coordinate of point relative to force,
-        e.g, (x-x_F, y-y_F, z). (Not z-z_F!)
-        When z > h, we use oscillation integral(near_integral) to 
-        get the green funciton if z < 3h and normal integral(far-
-        integral) else.
-        For the z < h case, just replace the z and h to H-z and H-z
-        under the integral.
-        '''
-        # func_list_u = [j0x2a1, j1xa1, j0a2, j1xa4_13, j1xa4_31]
-        
-        x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
-        r = sk.np.sqrt(x**2 + y**2)
-        (z_, h_) = (z, self.height) if z > self.height else (self.Height - z, self.Height - self.height)
-        paraw = [r, z, self.height, self.Height]
-        parav = [r, z_, h_, self.Height]
-        coeff = z - self.height
-        far_integral = sk.far_integral
-        near_integral = sk.near_integral
-        
-        if z_ < 3. * h_:
-            j0sh = near_integral(sk.j0sh, *parav, m=0)
-            j1xsh = near_integral(sk.j1xsh, *parav, m=1)
-            j0xdsh = near_integral(sk.j0xdsh, *parav, m=0)
-        else:
-            imaxv = 9. * r / (z_ - h_)
-            j0sh = far_integral(sk.j0sh, *paraw, imaxv, method='gauss-legendre')
-            j1xsh = far_integral(sk.j1xsh, *paraw, imaxv, method='gauss-legendre')
-            j0xdsh = far_integral(sk.j0xdsh, *paraw, imaxv, method='gauss-legendre')
-
-        imaxw = 9. * r / (z + self.height)
-        j0x2a1 = sk.far_integral(sk.j0x2a1, *paraw, imaxw, method='gauss-legendre')
-        j1xa1 = far_integral(sk.j1xa1, *paraw, imaxw, method='gauss-legendre')
-        j0a2 = far_integral(sk.j0a2, *paraw, imaxw, method='gauss-legendre')
-        j1xa4_13 = far_integral(sk.j1xa4_13, *paraw, imaxw, method='gauss-legendre')
-        j1xa4_31 = far_integral(sk.j1xa4_31, *paraw, imaxw, method='gauss-legendre')
-        
-        self.u_tensor[0][0] = (j0sh + x**2 / r * j1xsh + (x**2 - y**2) / r**3 * j1xa1
-                              - x**2 / r**2 * j0x2a1)
-        self.u_tensor[0][1] = (x * y / r * j1xsh + (2*x*y) / r**3 * j1xa1
-                              - x * y / r**2 * j0x2a1)
-        self.u_tensor[1][0] = self.u_tensor[0][1]
-        self.u_tensor[1][1] = (j0sh + y**2 / r * j1xsh + (y**2 - x**2) / r**3 * j1xa1
-                              - y**2 / r**2 * j0x2a1)
-        
-        self.u_tensor[0][2] = coeff * x / r * j1xsh + x / r * j1xa4_13
-        self.u_tensor[1][2] = coeff * y / r * j1xsh + y / r * j1xa4_13
-        
-        self.u_tensor[2][0] = coeff * j1xsh + x / r * j1xa4_31
-        self.u_tensor[2][1] = coeff * j1xsh + y / r * j1xa4_31
-        
-        self.u_tensor[2][2] = j0sh - j0xdsh + j0a2
-        
-        return self.u_tensor.copy()
-
-    def get_Ufunc(self, point_locs):
-        Ufunc = sk.np.array([self.get_ufunc(pt) for pt in point_locs])
-        return (Ufunc[:, i, j] for i in range(3) for j in range(3))
-
-    # Since the integrals in the velocity funtion are duplicate. 
-    # We only need to calculate them once.
-    
+    '''Added in 8.7, 2017. Reorganize the integral part then it is efficient 
+	in performance but tedious in code.'''
     def get_uxfunc(self, point_loc):
+		'''Return the series solution of Green funcition caused by Fx.
+        
+        Arguments:
+        point_loc -> location of field point
+        n_f: final number of your series.
+        n_i: initial number of your series. 
+        
+		'''
         x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
         r = sk.np.sqrt(x**2 + y**2)
         (z_, h_) = (z, self.height) if z > self.height else (self.Height - z, self.Height - self.height)
@@ -284,15 +221,77 @@ class tank():
         self.u_tensor[2][2] = j0sh - j0xdsh + j0a2
         
         return self.u_tensor[2, :]
-    
-    # Numerica derivative. 
+		
+	def get_ufunc_integral(self, point_loc): 
+        '''      
+        First We get the coordinate of point relative to force,
+        e.g, (x-x_F, y-y_F, z). (Not z-z_F!)
+        When z > h, we use oscillation integral(near_integral) to 
+        get the green funciton if z < 3h and normal integral(far-
+        integral) else.
+        For the z < h case, just replace the z and h to H-z and H-z
+        under the integral.
+        '''
+        
+        x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
+        r = sk.np.sqrt(x**2 + y**2)
+        (z_, h_) = (z, self.height) if z > self.height else (self.Height - z, self.Height - self.height)
+        paraw = [r, z, self.height, self.Height]
+        parav = [r, z_, h_, self.Height]
+        coeff = z - self.height
+        far_integral = sk.far_integral
+        near_integral = sk.near_integral
+        
+        if z_ < 3. * h_:
+            j0sh = near_integral(sk.j0sh, *parav, m=0)
+            j1xsh = near_integral(sk.j1xsh, *parav, m=1)
+            j0xdsh = near_integral(sk.j0xdsh, *parav, m=0)
+        else:
+            imaxv = 9. * r / (z_ - h_)
+            j0sh = far_integral(sk.j0sh, *paraw, imaxv, method='gauss-legendre')
+            j1xsh = far_integral(sk.j1xsh, *paraw, imaxv, method='gauss-legendre')
+            j0xdsh = far_integral(sk.j0xdsh, *paraw, imaxv, method='gauss-legendre')
+
+        imaxw = 9. * r / (z + self.height)
+        j0x2a1 = sk.far_integral(sk.j0x2a1, *paraw, imaxw, method='gauss-legendre')
+        j1xa1 = far_integral(sk.j1xa1, *paraw, imaxw, method='gauss-legendre')
+        j0a2 = far_integral(sk.j0a2, *paraw, imaxw, method='gauss-legendre')
+        j1xa4_13 = far_integral(sk.j1xa4_13, *paraw, imaxw, method='gauss-legendre')
+        j1xa4_31 = far_integral(sk.j1xa4_31, *paraw, imaxw, method='gauss-legendre')
+        
+        self.u_tensor[0][0] = (j0sh + x**2 / r * j1xsh + (x**2 - y**2) / r**3 * j1xa1
+                              - x**2 / r**2 * j0x2a1)
+        self.u_tensor[0][1] = (x * y / r * j1xsh + (2*x*y) / r**3 * j1xa1
+                              - x * y / r**2 * j0x2a1)
+        self.u_tensor[1][0] = self.u_tensor[0][1]
+        self.u_tensor[1][1] = (j0sh + y**2 / r * j1xsh + (y**2 - x**2) / r**3 * j1xa1
+                              - y**2 / r**2 * j0x2a1)
+        
+        self.u_tensor[0][2] = coeff * x / r * j1xsh + x / r * j1xa4_13
+        self.u_tensor[1][2] = coeff * y / r * j1xsh + y / r * j1xa4_13
+        
+        self.u_tensor[2][0] = coeff * x / r * j1xsh + x / r * j1xa4_31
+        self.u_tensor[2][1] = coeff * y / r * j1xsh + y / r * j1xa4_31
+        
+        self.u_tensor[2][2] = j0sh - j0xdsh + j0a2
+        
+        return self.u_tensor.copy()
+
+    def get_Ufunc_integral(self, point_locs):
+    '''Return a generator that generates 9 component of Green function.'''
+		Ufunc = sk.np.array([self.get_ufunc(pt) for pt in point_locs])
+        return (Ufunc[:, i, j] for i in range(3) for j in range(3))
+
     def xderi(self, x, y, z, dr=1e-6):
+		'''Return numerica derivative of uxfunc.'''
         return self.get_uxfunc([x+dr, y, z])/(2*dr)- self.get_uxfunc([x-dr, y, z])/(2*dr)
 
     def yderi(self, x, y, z, dr=1e-6):
+		'''Return numerica derivative of uyfunc.'''
         return self.get_uyfunc([x, y+dr, z])/(2*dr)- self.get_uyfunc([x, y-dr, z])/(2*dr)
 
     def zderi(self, x, y, z, dr=1e-6):
+		'''Return numerica derivative of uzfunc'''
         return self.get_uzfunc([x, y, z+dr])/(2*dr)- self.get_uzfunc([x, y, z-dr])/(2*dr)
 
     def ndiv(self, point_locs, dr=1e-6):
@@ -300,7 +299,9 @@ class tank():
         yd = self.yderi(*point_locs, dr)
         zd = self.zderi(*point_locs, dr)
         return xd + yd + zd   
-
+	
+    '''Added in 8.17, 2017. Input array, return full Green funciton
+    of the series type.'''
     def get_ux_series(self, point_loc, n_f=50, n_i=1):
         '''Return the series solution of Green funcition caused by Fx.
         
@@ -348,8 +349,8 @@ class tank():
         x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
         #r = sk.np.sqrt(x**2 + y**2)
         '''u32(x, y) = u31(y, x)'''
-        para1 = [y, x, z, self.height, Height, n_i, n_f]
-        para2 = 
+        para1 = [x, y, z, self.height, Height, n_i, n_f]
+        para2 = [y, x, z, self.height, Height, n_i, n_f]
         self.u_tensor[2][0] = sks.u31(*para1)
         self.u_tensor[2][1] = sks.u31(*para2)
         self.u_tensor[2][2] = sks.u33(*para1)
@@ -365,7 +366,7 @@ class tank():
         '''Return the series solution of Green funcition caused by Fx.
         
         Arguments:
-        point_loc -> location of field point
+        point_loc -> location of field point, array
         n_f: final number of your series.
         n_s: start number of your series. 
         
@@ -382,7 +383,7 @@ class tank():
         '''Return the series solution of Green funcition caused by Fx.
         
         Arguments:
-        point_loc -> location of field point
+        point_loc -> location of field point, array
         n_f: final number of your series.
         n_s: initial number of your series. 
         
@@ -400,7 +401,7 @@ class tank():
         '''Return the series solution of Green funcition caused by Fx.
         
         Arguments:
-        point_loc -> location of field point
+        point_loc -> location of field point, array
         n_f: final number of your series.
         n_s: initial number of your series. 
         
@@ -417,14 +418,17 @@ class tank():
     
     def get_ufunc_series(self, point_loc, n_f=50, n_s=1):
         '''Return the series solution of  full Green funcition.
-	
-	Arguments:
-        point_locs -> location of field points
+        
+        Arguments:
+        point_loc -> location of field point, array
         n_f: final number of your series.
         n_s: initial number of your series. 
-	'''
+
+        '''
         x, y, z= point_loc[0]-self.x_F, point_loc[1]-self.y_F, point_loc[2]
         x3 = z
+        h = self.height
+        H = self.Height
         pi = sks.np.pi
         r = sk.np.sqrt(x**2 + y**2)
         zm = sks.zm
@@ -438,8 +442,8 @@ class tank():
         inverseOfzm_Min = sks.np.array([sks.inverseOfzm_Min(n) for n in range(n_s, n_f+1)])
         hankel0 = sks.np.array([sks.mp.hankel1(0, r*zm(n)/H) for n in range(n_s, n_f+1)])
         hankel1 = sks.np.array([sks.mp.hankel1(1, r*zm(n)/H) for n in range(n_s, n_f+1)])
-        besselk0 = sks.np.array([sps.k0(r*n*pi/H) for n in range(n_s, n_f+1)])
-        besselk1= sks.np.array([1 / (n*pi) * sps.k1(r*n*pi/H) for n in range(n_s, n_f+1)])
+        besselk0 = sks.np.array([sks.sps.k0(r*n*pi/H) for n in range(n_s, n_f+1)])
+        besselk1= sks.np.array([1 / (n*pi) * sks.sps.k1(r*n*pi/H) for n in range(n_s, n_f+1)])
     
         uabH0 = sks.np.array([sks.mp.im(pi * zm(n+1)/H * hankel0[n] * (1/zm(n+1)*shsh[n] + chsh[n] + shch[n]
                     - inverseOfzm_Min[n]*zm(n+1)*((x3+h)/H*shsh[n]
@@ -489,13 +493,7 @@ class tank():
         self.u_tensor[2][2] = u33H0.sum()
         return self.u_tensor.copy()
     
-    def get_Ufunc_series(self, point_locs, n_f=50, n_s=1):
-	'''Return the series solution of full Green funcition of a list of points.
-	
-	Arguments:
-        point_locs -> location of field points
-        n_f: final number of your series.
-        n_s: initial number of your series. 
-	'''
-        Ufunc = sk.np.array([self.get_ufunc_series(pt, n_f, n_s) for pt in point_locs])
+    def get_Ufunc_series(self, point_locs):
+	'''Return a generator that generates 9 component of Green function.'''
+        Ufunc = sk.np.array([self.get_ufunc_series(pt) for pt in point_locs])
         return (Ufunc[:, i, j] for i in range(3) for j in range(3))
